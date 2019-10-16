@@ -1,4 +1,4 @@
-all: prog clean
+all: prog
 
 prog:   cx.l cx.y
 	bison -dv cx.y

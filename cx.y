@@ -1,8 +1,6 @@
 %{
-    #include <stdio.h>
     #include <stdlib.h>
-    #include <string.h>
-    #include <malloc.h>
+    #include "code.h"
 
     #define txmax 100 //符号表容量
     #define al 10   //标识符最长长度
@@ -32,7 +30,6 @@
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR ODD
 %token <ident> ID
 %token <number> NUM
-// %type <number> id
 
 %%
 
@@ -116,12 +113,8 @@ bfactor:
     ;
 
 rel:
-    lrel comp aexpr
-    ;
-
-lrel:
-    aid
-    | NUM
+    aid comp aexpr
+    | NUM comp aexpr
     ;
 
 comp:
