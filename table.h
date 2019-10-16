@@ -16,7 +16,7 @@ char id[AL];
 enum object{constant, variable, procedur};
 enum object kind;
 
-error(int);
+void error(int);
 
 struct table1 {
 	char name[AL];

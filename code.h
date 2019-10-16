@@ -25,7 +25,9 @@ struct instruction {
 
 extern int line;
 
-error(int n) {
+void yyerror(char *s);
+
+void error(int n) {
 	printf("***");
 	fputs("***",fa1);
 	printf("error%d",n);
