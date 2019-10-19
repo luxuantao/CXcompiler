@@ -1,6 +1,5 @@
-cx
 cx.output
 cx.tab.c
 cx.tab.h
 lex.yy.c
-foutput.txt
+cx

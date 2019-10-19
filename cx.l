@@ -9,8 +9,8 @@
 %}
 
 whitespace  ([ \t\n])+
-ID          [A-Za-z][A-Za-z0-9]*
-NUM         ([1-9][0-9]*)|0
+IDENT       [A-Za-z][A-Za-z0-9]*
+NUMBER      ([1-9][0-9]*)|0
 
 %%
 
@@ -52,20 +52,22 @@ NUM         ([1-9][0-9]*)|0
 "read"     {return READ;}
 "int"      {return INT;}
 "bool"     {return BOOL;}
+"char"     {return CHAR;}
+"const"    {return CONST;}
 "repeat"   {return REPEAT;}
 "until"    {return UNTIL;}
 "XOR"      {return XOR;}
 "ODD"      {return ODD;}
 
-{ID}       {
+{IDENT}    {
 				yylval.ident = (char *)malloc(strlen(yytext) + 1);
 				strcpy(yylval.ident, yytext);
-				return ID;
+				return IDENT;
 		   }
 
-{NUM}      {
+{NUMBER}      {
 				yylval.number = atoi(yytext);
-				return NUM;
+				return NUMBER;
 		   }
 
 .          {
