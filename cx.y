@@ -69,7 +69,7 @@
     char category[10]; //判断当前id是否是整形还是字符类型还是布尔类型
 
     void init();
-    void enter(enum vartype T, enum object k, int arraylen, int dim, int lay[]);
+    void enter(enum object k);
     int position(char* s);
     void setdx(int n);
     void gen(enum fct x, int y, int z);
@@ -91,11 +91,14 @@
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST FALSE TRUE 
-%token SELFADD SELFMIUNS REPEAT UNTIL XOR ODD
+%token SELFADD SELFMIUNS REPEAT UNTIL XOR ODD 
+%token BEG END CALL THEN DO PROC VAR
 %token <ident> IDENT
 %token <number> NUMBER
 
-%type <number> vardecl varlist vardef decls
+%type <number> ident
+%type <number> vardecl varlist vardef
+%type <number> get_table_addr get_code_addr
 
 %%
 
@@ -104,22 +107,31 @@ program:
 	;
 
 block:
-	LBRACE decls RBRACE
+    {               
+        table[tx].adr = cx; /* 记录当前层代码的开始位置 */  
+        $<number>$ = cx;
+        gen(jmp, 0, 0); /* 产生跳转指令，跳转位置未知暂时填0 */
+    }
+    get_table_addr /* 记录本层标识符的初始位置 */
+    constdecl vardecl procdecls
+    {
+        code[$<number>1].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
+        table[$2].adr = cx;         /* 记录当前过程代码地址 */
+        table[$2].size = $4 + 3;    /* 记录当前过程分配数据大小 */
+        gen(ini, 0, $4 + 3);
+        displaytable();
+    }
+    statement
+    {
+        gen(opr, 0 , 0);                
+        tx = proctable[px];
+    } 
 	;
 
-decls:
-	decls decl
-    |
-	;
-
-decl:
-    constdecl
-    | vardecl
-    ;
-
-/* 常量声明 */
+/*  常量声明 */
 constdecl: 
-    CONST constlist SEMICOLON 
+    CONST constlist SEMICOLON
+    |
     ;
 
 /* 常量声明列表 */
@@ -129,41 +141,26 @@ constlist:
     ;
 
 /* 单个常量 */
-constdef: 
-    IDENT EQL NUMBER
-    {
+constdef:
+    IDENT BECOMES NUMBER
+    {        
         strcpy(id, $1);   
         num = $3;
-        enter(inttype, constant, 0, 0, NULL);
+        enter(constant);
     }
     ;
 
-/* 变量声明 */
+/*  变量声明 */
 vardecl: 
-    type varlist SEMICOLON
+    VAR varlist SEMICOLON
     {
         $$ = $2;         /* 传递变量声明的个数 */
+        setdx($2);
     }
     |
     {
         $$ = 0;          /* 没有变量声明 */
     } 
-    ;
-
-/* 变量类型 */
-type:
-    INT
-    {
-        strcpy(category, "int");
-    }
-    | CHAR
-    {
-        strcpy(category, "char");
-    }
-    | BOOL
-    {
-        strcpy(category, "bool");
-    }
     ;
 
 /* 变量声明列表 */
@@ -177,20 +174,283 @@ varlist:
         $$ = $1 + $3;  /* 变量声明的个数相加 */
     }
     ;
-         
+
 /* 单个变量 */
 vardef: 
     IDENT 
     {
         strcpy(id, $1);
-        if (category[0] == 'c')
-            enter(chartype, variable, 0, 0, NULL); 
-        else if (category[0] == 'i')
-            enter(inttype, variable, 0, 0, NULL); 
-        else
-            enter(booltype, variable, 0, 0, NULL);
+        enter(variable);
         $$ = 1;
     }
+    ;
+
+/*  过程声明 */
+procdecls: 
+    procdecls procdecl procbody 
+    |
+    ;
+
+/*  过程声明头部 */
+procdecl: 
+    inc_px PROC IDENT SEMICOLON
+    {                 
+        strcpy(id, $3);
+        enter(procedure); 
+        proctable[px] = tx;                
+    }
+    ;
+
+/*  过程声明主体 */
+procbody: 
+    inc_level block dec_level_px SEMICOLON  
+    ;
+
+/*  语句 */
+statement: 
+    assignmentstm 
+    | callstm 
+    | compoundstm 
+    | ifstm 
+    | whilestm 
+    | readstm 
+    | writestm 
+    |
+    ;
+
+/*  赋值语句 */
+assignmentstm: 
+    ident BECOMES expression
+    {
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else
+        {
+            if (table[$1].kind == variable)
+                gen(sto, lev - table[$1].level, table[$1].adr);
+            else
+                yyerror("Symbol should be a variable");
+        }
+    }
+    ;
+
+/*  调用语句 */
+callstm: 
+    CALL ident
+    {
+        if ($2 == 0)
+            yyerror("call Symbol does not exist");
+        else
+        {
+            if (table[$2].kind != procedure)
+                yyerror("Symbol should be a procedure");
+            else
+                gen(cal, lev - table[$2].level, table[$2].adr);    
+        }
+    }
+    ;   
+
+/* 复合语句 */
+compoundstm: 
+    BEG statements END 
+    ;
+
+/* 一条或多条语句 */
+statements: 
+    statement 
+    | statements SEMICOLON statement 
+    ;
+
+/* 条件语句 */
+ifstm: 
+    IF condition get_code_addr 
+    {
+        gen(jpc, 0, 0);
+    }
+    THEN statement 
+    {
+        code[$3].a = cx;
+    }
+    ;
+
+/* 循环语句 */
+whilestm: 
+    WHILE get_code_addr condition DO get_code_addr 
+    {
+        gen(jpc, 0, 0);
+    }
+    statement
+    {
+        gen(jmp, 0, $2);
+        code[$5].a = cx;
+    }
+    ;
+
+/* 读语句 */
+readstm: 
+    READ LPAREN readvarlist RPAREN
+    ;
+
+/* 一个或多个读语句的变量 */
+readvarlist: 
+    readvar | readvarlist COMMA readvar 
+    ;
+
+/* 读语句变量 */
+readvar: 
+    ident 
+    {
+        gen(opr, 0, 16);
+        gen(sto, lev - table[$1].level, table[$1].adr);
+    }
+    ;
+
+/* 写语句 */
+writestm: 
+    WRITE LPAREN writeexplist RPAREN
+    ; 
+
+/* 一个或多个写语句的表达式 */
+writeexplist:
+    expression
+    {
+        gen(opr, 0, 14);
+        gen(opr, 0, 15);
+    }
+    | writeexplist COMMA expression
+    {
+        gen(opr, 0, 14);
+        gen(opr, 0, 15);
+    }
+    ;
+
+/* 条件表达式 */
+condition: 
+    ODD expression 
+    {
+        gen(opr, 0, 6);
+    }
+    | expression EQL expression 
+    {
+        gen(opr, 0, 8);
+    }
+    | expression NEQ expression 
+    {
+        gen(opr, 0, 9);
+    }
+    | expression LES expression 
+    {
+        gen(opr, 0, 10);
+    }
+    | expression LEQ expression 
+    {
+        gen(opr, 0, 13);
+    }
+    | expression GTR expression 
+    {
+        gen(opr, 0, 12);
+    }
+    | expression GEQ expression 
+    {
+        gen(opr, 0, 11);
+    }
+    ;
+
+/* 表达式 */
+expression: 
+    PLUS term
+    | MINUS term
+    {
+        gen(opr, 0, 1);
+    }
+    | term             
+    | expression PLUS term
+    {
+        gen(opr, 0, 2);
+    }
+    | expression MINUS term
+    {
+        gen(opr, 0, 3);
+    }
+    ;
+
+/* 项 */
+term: 
+    factor
+    | term TIMES factor
+    {
+        gen(opr, 0, 4);
+    }
+    | term SLASH factor
+    {
+        gen(opr, 0, 5);
+    }  
+    ;
+
+/* 因子 */
+factor: 
+    ident
+    { 
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else
+        {
+            if (table[$1].kind == procedure)
+                yyerror("Symbol should not be a procedure");
+            else
+            {
+                if(table[$1].kind == constant)
+                    gen(lit, 0, table[$1].val);
+                else if(table[$1].kind == variable)
+                    gen(lod, lev - table[$1].level, table[$1].adr);
+            }
+        }
+    }   
+    | NUMBER 
+    {
+        gen(lit, 0, $1);
+    }
+    | LPAREN expression RPAREN
+    ;
+
+ident: 
+    IDENT 
+    {
+        $$ = position($1); 
+    }
+    ;
+
+get_table_addr:
+    {
+        $$ = tx;
+    } 
+    ;
+
+get_code_addr:
+    {
+        $$ = cx;
+    }
+    ;
+
+inc_level:
+    {
+        lev++;               
+        if (lev > LEVMAX)   /* 嵌套层数过多 */
+            yyerror("Lev is too big");    
+    }
+    ;
+
+inc_px:
+    {
+        px++;              
+    }     
+    ;
+
+dec_level_px:
+    {
+        lev--;
+        px--;              
+    }    
     ;
 
 %%
@@ -212,7 +472,7 @@ void init() {
 }
 
 /* 在符号表中加入一项 */
-void enter(enum vartype t, enum object k, int arraylen, int dim, int lay[]) {
+void enter(enum object k) {
     tx = tx + 1;
     strcpy(table[tx].name, id);
     table[tx].kind = k;
@@ -222,9 +482,6 @@ void enter(enum vartype t, enum object k, int arraylen, int dim, int lay[]) {
         break;
     case variable:
         table[tx].level = lev;
-        table[tx].adr = dx;
-        table[tx].idtype = t;
-        dx++;
         break;
     case procedure:
         table[tx].level = lev;
@@ -268,8 +525,7 @@ void gen(enum fct x, int y, int z) {
 }
 
 /* 输出所有目标代码  */
-void listall()
-{
+void listall() {
     int i;
     char name[][5] = {
         {"lit"},{"opr"},{"lod"},{"sto"},{"cal"},{"int"},{"jmp"},{"jpc"},{"loa"},{"sta"},{"hod"},
@@ -408,8 +664,8 @@ void interpret() {
                 break;
             case 16:/* 读入一个输入置于栈顶 */
                 t = t + 1;
-                printf("?");
-                fprintf(fresult, "?");
+                printf("input a number");
+                fprintf(fresult, "input a number");
                 scanf("%d", &(s[t]));
                 fprintf(fresult, "%d\n", s[t]);           
                 break;
@@ -458,7 +714,7 @@ int base(int l, int s[], int b) {
 }
 
 int main() {
-    printf("Please input cx file:\n");
+    printf("Please input cx file: ");
     scanf("%s", fname);   /* 输入文件名 */
     if ((fin = fopen(fname, "r")) == NULL) {
         printf("Can't open the input file!\n");
@@ -473,11 +729,11 @@ int main() {
         exit(1);
     }
 
-    printf("List object codes?(Y/N)");  /* 是否输出虚拟机代码 */
+    printf("List object codes?(Y/N) ");  /* 是否输出虚拟机代码 */
     scanf("%s", fname);
     listswitch = (fname[0]=='y' || fname[0]=='Y');
     
-    printf("List symbol table?(Y/N)");  /* 是否输出符号表 */
+    printf("List symbol table?(Y/N) ");  /* 是否输出符号表 */
     scanf("%s", fname);
     tableswitch = (fname[0]=='y' || fname[0]=='Y');
 

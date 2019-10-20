@@ -9,12 +9,12 @@
 %}
 
 whitespace  ([ \t\n])+
-IDENT       [A-Za-z][A-Za-z0-9]*
-NUMBER      ([1-9][0-9]*)|0
+ID          [A-Za-z][A-Za-z0-9]*
+NUM         ([1-9][0-9]*)|0
 
 %%
 
-[ \t]	   ;
+[ \t]	   {;}
 [\n]	   {line++;}
 
 "+"        {return PLUS;}
@@ -58,14 +58,21 @@ NUMBER      ([1-9][0-9]*)|0
 "until"    {return UNTIL;}
 "XOR"      {return XOR;}
 "ODD"      {return ODD;}
+"begin"    {return BEG;}
+"end"	   {return END;}
+"call"     {return CALL;}
+"then"     {return THEN;}
+"do"       {return DO;}
+"procedure" {return PROC;}
+"var"      {return VAR;}
 
-{IDENT}    {
+{ID}    {
 				yylval.ident = (char *)malloc(strlen(yytext) + 1);
 				strcpy(yylval.ident, yytext);
 				return IDENT;
 		   }
 
-{NUMBER}      {
+{NUM}   {
 				yylval.number = atoi(yytext);
 				return NUMBER;
 		   }

@@ -1,5 +1,8 @@
-cx.output
 cx.tab.c
 cx.tab.h
 lex.yy.c
-cx
+cx.output
+fcode.txt
+foutput.txt
+fresult.txt
+ftable.txt
