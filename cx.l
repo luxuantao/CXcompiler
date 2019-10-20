@@ -65,7 +65,7 @@ NUM         ([1-9][0-9]*)|0
 "call"     {return CALL;}
 "then"     {return THEN;}
 "do"       {return DO;}
-"procedure" {return PROC;}
+"func"     {return PROC;}
 "var"      {return VAR;}
 
 {ID}    {

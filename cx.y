@@ -193,7 +193,7 @@ procdecls:
 
 /*  过程声明头部 */
 procdecl: 
-    inc_px PROC IDENT SEMICOLON
+    inc_px PROC IDENT
     {                 
         strcpy(id, $3);
         enter(procedure); 
@@ -263,26 +263,26 @@ statements:
 
 /* 条件语句 */
 ifstm: 
-    IF condition get_code_addr 
+    IF LPAREN condition RPAREN get_code_addr 
     {
         gen(jpc, 0, 0);
     }
     THEN statement 
     {
-        code[$3].a = cx;
+        code[$5].a = cx;
     }
     ;
 
 /* 循环语句 */
 whilestm: 
-    WHILE get_code_addr condition DO get_code_addr 
+    WHILE get_code_addr LPAREN condition RPAREN DO get_code_addr 
     {
         gen(jpc, 0, 0);
     }
     statement
     {
         gen(jmp, 0, $2);
-        code[$5].a = cx;
+        code[$7].a = cx;
     }
     ;
 

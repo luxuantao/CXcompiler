@@ -1,10 +1,21 @@
 const m = 7;
 var x, y, z;
-procedure add;
+func add
     var a, b, c;
-    begin a = x; b = y; z = a + b; write(z); end;
+    begin 
+        a = x; 
+        b = y; 
+        z = a + b; 
+        write(z); 
+    end;
 begin
-    x = m; y = 57; call add;
-    if x == 7 then write(x);
-    /*while x > 5 do begin x = x - 1; write(x); end;*/ 
+    x = m; 
+    y = 57; 
+    call add;
+    if (x == 7) then write(x);
+    while (x > 5) do 
+        begin 
+            x = x - 1; 
+            write(x); 
+        end
 end
