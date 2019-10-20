@@ -125,7 +125,7 @@ block:
     {
         gen(opr, 0 , 0);                
         tx = proctable[px];
-    } 
+    }
 	;
 
 /*  常量声明 */
@@ -275,14 +275,14 @@ ifstm:
 
 /* 循环语句 */
 whilestm: 
-    WHILE get_code_addr LPAREN condition RPAREN DO get_code_addr 
+    WHILE get_code_addr LPAREN condition RPAREN get_code_addr 
     {
         gen(jpc, 0, 0);
     }
     statement
     {
         gen(jmp, 0, $2);
-        code[$7].a = cx;
+        code[$6].a = cx;
     }
     ;
 
