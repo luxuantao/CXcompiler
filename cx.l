@@ -6,6 +6,7 @@
 	int yywrap();
 	void yyerror(char *);
 	char msg[100];
+	void comment();
 %}
 
 whitespace  ([ \t\n])+
@@ -17,6 +18,7 @@ NUM         ([1-9][0-9]*)|0
 [ \t]	   {;}
 [\n]	   {line++;}
 
+"/*"       {comment();} 
 "+"        {return PLUS;}
 "-"        {return MINUS;}
 "*"        {return TIMES;}
@@ -90,4 +92,19 @@ void redirectInput(FILE *input) {
 
 int yywrap() {
     return 1;
+}
+
+void comment() {
+    char c, c1;
+loop:
+    while ((c = input()) != '*' && c != 0) {
+        // putchar(c);
+	}
+    if ((c1 = input()) != '/' && c != 0) {
+        unput(c1);
+        goto loop;
+    }
+    if (c != 0) {
+        // putchar(c1);
+	}
 }

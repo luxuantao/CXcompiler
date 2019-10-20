@@ -6,5 +6,5 @@ procedure add;
 begin
     x = m; y = 57; call add;
     if x == 7 then write(x);
-    while x > 5 do begin x = x - 1; write(x); end; 
+    /*while x > 5 do begin x = x - 1; write(x); end;*/ 
 end

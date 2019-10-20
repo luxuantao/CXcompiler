@@ -536,6 +536,7 @@ void listall() {
             printf("%d %s %d %d\n", i, name[code[i].f], code[i].l, code[i].a);
             fprintf(fcode,"%d %s %d %d\n", i, name[code[i].f], code[i].l, code[i].a);
         }
+        printf("\n");
     }
 }
 
@@ -742,7 +743,7 @@ int main() {
     yyparse();
 
     if (err == 0) {
-        printf("\n===Parsing success!===\n");
+        printf("\n===Parsing success!===\n\n");
         fprintf(foutput, "\n===Parsing success!===\n");
         if ((fcode = fopen("fcode.txt", "w")) == NULL) {
             printf("Can't open fcode.txt file!\n");
