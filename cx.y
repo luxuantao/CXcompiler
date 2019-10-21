@@ -9,7 +9,7 @@
     
     #define TXMAX 100 //符号表容量
     #define AL 10 //标识符最长长度
-    #define LEVMAX 3 //嵌套深度
+    #define LEVMAX 5 //嵌套深度
     #define AMAX 2047 //地址上界
     #define STACKSIZE 500 //栈元素上界
     #define CXMAX 200 //最多的pcode条数
@@ -49,7 +49,7 @@
     int cx; // pcode索引
     int px; // 嵌套过程索引表proctable的指针
     int lev; // 层次记录
-    int proctable[3]; // 嵌套过程索引表
+    int proctable[5]; // 嵌套过程索引表
     char id[AL];
     int num;
     bool listswitch;   /* 显示虚拟机代码与否 */
@@ -102,10 +102,11 @@
 %%
 
 program:
-	block
+	mainblock
 	;
 
-block:
+mainblock:
+    LBRACE
     {               
         table[tx].adr = cx; /* 记录当前层代码的开始位置 */  
         $<number>$ = cx;
@@ -114,10 +115,10 @@ block:
     get_table_addr /* 记录本层标识符的初始位置 */
     constdecl vardecl procdecls
     {
-        code[$<number>1].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
-        table[$2].adr = cx;         /* 记录当前过程代码地址 */
-        table[$2].size = $4 + 3;    /* 记录当前过程分配数据大小 */
-        gen(ini, 0, $4 + 3);
+        code[$<number>2].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
+        table[$3].adr = cx;         /* 记录当前过程代码地址 */
+        table[$3].size = $5 + 3;    /* 记录当前过程分配数据大小 */
+        gen(ini, 0, $5 + 3);
         displaytable();
     }
     statement
@@ -125,6 +126,31 @@ block:
         gen(opr, 0 , 0);                
         tx = proctable[px];
     }
+    RBRACE
+	;
+
+block:
+    LBRACE
+    {               
+        table[tx].adr = cx; /* 记录当前层代码的开始位置 */  
+        $<number>$ = cx;
+        gen(jmp, 0, 0); /* 产生跳转指令，跳转位置未知暂时填0 */
+    }
+    get_table_addr /* 记录本层标识符的初始位置 */
+    constdecl vardecl
+    {
+        code[$<number>2].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
+        table[$3].adr = cx;         /* 记录当前过程代码地址 */
+        table[$3].size = $5 + 3;    /* 记录当前过程分配数据大小 */
+        gen(ini, 0, $5 + 3);
+        displaytable();
+    }
+    statement
+    {
+        gen(opr, 0 , 0);                
+        tx = proctable[px];
+    }
+    RBRACE
 	;
 
 /*  常量声明 */
@@ -202,7 +228,7 @@ procdecl:
 
 /*  过程声明主体 */
 procbody: 
-    inc_level block dec_level_px SEMICOLON  
+    inc_level block dec_level_px  
     ;
 
 /*  语句 */
