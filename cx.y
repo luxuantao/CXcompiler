@@ -61,7 +61,7 @@
     FILE* fcode;    /* 输出虚拟机代码 */
     FILE* foutput;  /* 输出出错示意（如有错） */
     FILE* fresult;  /* 输出执行结果 */
-    // FILE* fstack;   /* 输出每一步栈的结果 */
+    FILE* fstack;   /* 输出每一步栈的结果 */
     int err; // 程序中的错误个数
     extern int line;
 
@@ -96,60 +96,19 @@
 %token <number> NUMBER
 
 %type <number> ident
-%type <number> vardecl varlist vardef
-%type <number> get_table_addr get_code_addr
+// %type <number> vardecl varlist vardef
+// %type <number> get_table_addr get_code_addr
 
 %%
 
 program:
-	mainblock
-	;
-
-mainblock:
-    LBRACE
-    {               
-        table[tx].adr = cx; /* 记录当前层代码的开始位置 */  
-        $<number>$ = cx;
-        gen(jmp, 0, 0); /* 产生跳转指令，跳转位置未知暂时填0 */
-    }
-    get_table_addr /* 记录本层标识符的初始位置 */
-    constdecl vardecl procdecls
-    {
-        code[$<number>2].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
-        table[$3].adr = cx;         /* 记录当前过程代码地址 */
-        table[$3].size = $5 + 3;    /* 记录当前过程分配数据大小 */
-        gen(ini, 0, $5 + 3);
-        displaytable();
-    }
-    statement
-    {
-        gen(opr, 0 , 0);                
-        tx = proctable[px];
-    }
-    RBRACE
-	;
+    block
+    ;
 
 block:
     LBRACE
-    {               
-        table[tx].adr = cx; /* 记录当前层代码的开始位置 */  
-        $<number>$ = cx;
-        gen(jmp, 0, 0); /* 产生跳转指令，跳转位置未知暂时填0 */
-    }
-    get_table_addr /* 记录本层标识符的初始位置 */
-    constdecl vardecl
-    {
-        code[$<number>2].a = cx;    /* 把前面生成的跳转语句的跳转位置改成当前位置 */
-        table[$3].adr = cx;         /* 记录当前过程代码地址 */
-        table[$3].size = $5 + 3;    /* 记录当前过程分配数据大小 */
-        gen(ini, 0, $5 + 3);
-        displaytable();
-    }
-    statement
-    {
-        gen(opr, 0 , 0);                
-        tx = proctable[px];
-    }
+    constdecl
+    statements
     RBRACE
 	;
 
@@ -175,164 +134,19 @@ constdef:
     }
     ;
 
-/*  变量声明 */
-vardecl: 
-    VAR varlist SEMICOLON
-    {
-        $$ = $2;         /* 传递变量声明的个数 */
-        setdx($2);
-    }
-    |
-    {
-        $$ = 0;          /* 没有变量声明 */
-    } 
-    ;
-
-/* 变量声明列表 */
-varlist: 
-    vardef 
-    {
-        $$ = $1;
-    }
-    | varlist COMMA vardef 
-    {
-        $$ = $1 + $3;  /* 变量声明的个数相加 */
-    }
-    ;
-
-/* 单个变量 */
-vardef: 
-    IDENT 
-    {
-        strcpy(id, $1);
-        enter(variable);
-        $$ = 1;
-    }
-    ;
-
-/*  过程声明 */
-procdecls: 
-    procdecls procdecl procbody 
-    |
-    ;
-
-/*  过程声明头部 */
-procdecl: 
-    inc_px PROC IDENT
-    {                 
-        strcpy(id, $3);
-        enter(procedure); 
-        proctable[px] = tx;                
-    }
-    ;
-
-/*  过程声明主体 */
-procbody: 
-    inc_level block dec_level_px  
-    ;
-
 /*  语句 */
-statement: 
-    assignmentstm 
-    | callstm 
-    | compoundstm 
-    | ifstm 
-    | whilestm 
-    | readstm 
-    | writestm 
+statements:
+    statements statement
     |
     ;
 
-/*  赋值语句 */
-assignmentstm: 
-    ident BECOMES expression
-    {
-        if ($1 == 0)
-            yyerror("Symbol does not exist");
-        else
-        {
-            if (table[$1].kind == variable)
-                gen(sto, lev - table[$1].level, table[$1].adr);
-            else
-                yyerror("Symbol should be a variable");
-        }
-    }
-    ;
-
-/*  调用语句 */
-callstm: 
-    CALL ident
-    {
-        if ($2 == 0)
-            yyerror("call Symbol does not exist");
-        else
-        {
-            if (table[$2].kind != procedure)
-                yyerror("Symbol should be a procedure");
-            else
-                gen(cal, lev - table[$2].level, table[$2].adr);    
-        }
-    }
-    ;   
-
-/* 复合语句 */
-compoundstm: 
-    BEG statements END 
-    ;
-
-/* 一条或多条语句 */
-statements: 
-    statement 
-    | statements SEMICOLON statement 
-    ;
-
-/* 条件语句 */
-ifstm: 
-    IF LPAREN condition RPAREN get_code_addr 
-    {
-        gen(jpc, 0, 0);
-    }
-    THEN statement 
-    {
-        code[$5].a = cx;
-    }
-    ;
-
-/* 循环语句 */
-whilestm: 
-    WHILE get_code_addr LPAREN condition RPAREN get_code_addr 
-    {
-        gen(jpc, 0, 0);
-    }
-    statement
-    {
-        gen(jmp, 0, $2);
-        code[$6].a = cx;
-    }
-    ;
-
-/* 读语句 */
-readstm: 
-    READ LPAREN readvarlist RPAREN
-    ;
-
-/* 一个或多个读语句的变量 */
-readvarlist: 
-    readvar | readvarlist COMMA readvar 
-    ;
-
-/* 读语句变量 */
-readvar: 
-    ident 
-    {
-        gen(opr, 0, 16);
-        gen(sto, lev - table[$1].level, table[$1].adr);
-    }
+statement:
+    writestm 
     ;
 
 /* 写语句 */
 writestm: 
-    WRITE LPAREN writeexplist RPAREN
+    WRITE LPAREN writeexplist RPAREN SEMICOLON
     ; 
 
 /* 一个或多个写语句的表达式 */
@@ -346,38 +160,6 @@ writeexplist:
     {
         gen(opr, 0, 14);
         gen(opr, 0, 15);
-    }
-    ;
-
-/* 条件表达式 */
-condition: 
-    ODD expression 
-    {
-        gen(opr, 0, 6);
-    }
-    | expression EQL expression 
-    {
-        gen(opr, 0, 8);
-    }
-    | expression NEQ expression 
-    {
-        gen(opr, 0, 9);
-    }
-    | expression LES expression 
-    {
-        gen(opr, 0, 10);
-    }
-    | expression LEQ expression 
-    {
-        gen(opr, 0, 13);
-    }
-    | expression GTR expression 
-    {
-        gen(opr, 0, 12);
-    }
-    | expression GEQ expression 
-    {
-        gen(opr, 0, 11);
     }
     ;
 
@@ -443,39 +225,6 @@ ident:
     {
         $$ = position($1); 
     }
-    ;
-
-get_table_addr:
-    {
-        $$ = tx;
-    } 
-    ;
-
-get_code_addr:
-    {
-        $$ = cx;
-    }
-    ;
-
-inc_level:
-    {
-        lev++;               
-        if (lev > LEVMAX)   /* 嵌套层数过多 */
-            yyerror("Lev is too big");    
-    }
-    ;
-
-inc_px:
-    {
-        px++;              
-    }     
-    ;
-
-dec_level_px:
-    {
-        lev--;
-        px--;              
-    }    
     ;
 
 %%
@@ -778,17 +527,17 @@ int main(int argc, char *argv[]) {
             printf("Can't open fresult.txt file!\n");
             exit(1);
         }
-        // if ((fstack = fopen("fstack.txt", "w")) == NULL) {
-        //     printf("Can't open fresult.txt file!\n");
-        //     exit(1);
-        // }
+        if ((fstack = fopen("fstack.txt", "w")) == NULL) {
+            printf("Can't open fresult.txt file!\n");
+            exit(1);
+        }
 
         listall();  /* 输出所有代码 */
         fclose(fcode);
 
         interpret();  /* 调用解释执行程序 */
         fclose(fresult);
-        // fclose(fstack);
+        fclose(fstack);
     } else {
         printf("%d errors in CX program\n", err);
         fprintf(foutput, "%d errors in CX program\n", err);
