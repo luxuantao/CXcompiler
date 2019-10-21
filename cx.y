@@ -62,7 +62,6 @@
     FILE* foutput;  /* 输出出错示意（如有错） */
     FILE* fresult;  /* 输出执行结果 */
     // FILE* fstack;   /* 输出每一步栈的结果 */
-    char fname[AL];
     int err; // 程序中的错误个数
     extern int line;
 
@@ -714,10 +713,18 @@ int base(int l, int s[], int b) {
     return b1;
 }
 
-int main() {
-    printf("Please input cx file: ");
-    scanf("%s", fname);   /* 输入文件名 */
-    if ((fin = fopen(fname, "r")) == NULL) {
+int main(int argc, char *argv[]) {
+    int i;
+    if (argc > 1) {
+        for (i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-c") == 0) {  /* 是否输出虚拟机代码 */
+                listswitch = true;
+            } else if (strcmp(argv[i], "-t") == 0) {  /* 是否输出符号表 */
+                tableswitch = true;
+            }
+        }
+    }
+    if ((fin = fopen(argv[argc - 1], "r")) == NULL) {
         printf("Can't open the input file!\n");
         exit(1);
     }
@@ -729,14 +736,6 @@ int main() {
         printf("Can't open ftable.txt file!\n");
         exit(1);
     }
-
-    printf("List object codes?(Y/N) ");  /* 是否输出虚拟机代码 */
-    scanf("%s", fname);
-    listswitch = (fname[0]=='y' || fname[0]=='Y');
-    
-    printf("List symbol table?(Y/N) ");  /* 是否输出符号表 */
-    scanf("%s", fname);
-    tableswitch = (fname[0]=='y' || fname[0]=='Y');
 
     redirectInput(fin);
     init();

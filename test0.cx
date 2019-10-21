@@ -1,24 +1,22 @@
-{
-    const m = 7;
-    var x, y, z;
-    func add
-        var a, b, c;
+const m = 7;
+var x, y, z;
+func add
+    var a, b, c;
+    begin 
+        a = x; 
+        b = y; 
+        z = a + b; 
+        write(z); 
+    end;
+begin
+    x = m; 
+    y = 57; 
+    call add;
+    if (x == 7) then write(x);
+    while (x > 5) 
         begin 
-            a = x; 
-            b = y; 
-            z = a + b; 
-            write(z); 
+            x = x - 1; 
+            write(x); 
         end;
-    begin
-        x = m; 
-        y = 57; 
-        call add;
-        if (x == 7) then write(x);
-        while (x > 5) 
-            begin 
-                x = x - 1; 
-                write(x); 
-            end;
-        if (x != 7) then write(x);
-    end
-}
+    if (x != 7) then write(x);
+end
