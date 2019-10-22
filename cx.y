@@ -96,7 +96,7 @@
 %token <number> NUMBER
 
 %type <number> ident
-// %type <number> vardecl varlist vardef
+%type <number> vardecl varlist vardef
 // %type <number> get_table_addr get_code_addr
 
 %%
@@ -107,8 +107,14 @@ program:
 
 block:
     LBRACE
-    constdecl
+    constdecl vardecl
+    {
+        displaytable();
+    }
     statements
+    {
+        gen(jmp, 0, 0);
+    }
     RBRACE
 	;
 
@@ -134,6 +140,41 @@ constdef:
     }
     ;
 
+/*  变量声明 */
+vardecl: 
+    VAR varlist SEMICOLON
+    {
+        $$ = $2;         /* 传递变量声明的个数 */
+        setdx($2);
+    }
+    |
+    {
+        $$ = 0;          /* 没有变量声明 */
+    } 
+    ;
+
+/* 变量声明列表 */
+varlist: 
+    vardef 
+    {
+        $$ = $1;
+    }
+    | varlist COMMA vardef 
+    {
+        $$ = $1 + $3;  /* 变量声明的个数相加 */
+    }
+    ;
+
+/* 单个变量 */
+vardef: 
+    IDENT 
+    {
+        strcpy(id, $1);
+        enter(variable);
+        $$ = 1;
+    }
+    ;
+
 /*  语句 */
 statements:
     statements statement
@@ -141,8 +182,26 @@ statements:
     ;
 
 statement:
-    writestm 
+    assignmentstm
+    | writestm 
     ;
+
+/*  赋值语句 */
+assignmentstm: 
+    ident BECOMES expression SEMICOLON
+    {
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else
+        {
+            if (table[$1].kind == variable)
+                gen(sto, lev - table[$1].level, table[$1].adr);
+            else
+                yyerror("Symbol should be a variable");
+        }
+    }
+    ;
+
 
 /* 写语句 */
 writestm: 
@@ -206,9 +265,9 @@ factor:
                 yyerror("Symbol should not be a procedure");
             else
             {
-                if(table[$1].kind == constant)
+                if (table[$1].kind == constant)
                     gen(lit, 0, table[$1].val);
-                else if(table[$1].kind == variable)
+                else if (table[$1].kind == variable)
                     gen(lod, lev - table[$1].level, table[$1].adr);
             }
         }
@@ -277,7 +336,7 @@ int position(char id[]) {
 /* 为本层变量分配相对地址，从3开始分配 */
 void setdx(int n) {
     int i;
-    for(i = 1; i <= n; i++) {
+    for (i = 1; i <= n; i++) {
         table[tx - i + 1].adr = n - i + 3;
     }
 }
@@ -369,6 +428,7 @@ void interpret() {
 	do {
 		i = code[p];  /* 读当前指令 */
         p = p + 1;
+        // printf("p:%d\n", p);
         switch (i.f)
         {
         case lit: /* 将常量a的值取到栈顶 */
