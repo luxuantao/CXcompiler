@@ -183,6 +183,7 @@ statements:
 
 statement:
     assignmentstm
+    | readstm 
     | writestm 
     ;
 
@@ -202,6 +203,24 @@ assignmentstm:
     }
     ;
 
+/* 读语句 */
+readstm: 
+    READ LPAREN readvarlist RPAREN SEMICOLON
+    ;
+
+/* 一个或多个读语句的变量 */
+readvarlist: 
+    readvar | readvarlist COMMA readvar 
+    ;
+
+/* 读语句变量 */
+readvar: 
+    ident 
+    {
+        gen(opr, 0, 16);
+        gen(sto, lev - table[$1].level, table[$1].adr);
+    }
+    ;
 
 /* 写语句 */
 writestm: 
@@ -499,8 +518,8 @@ void interpret() {
                 break;
             case 16:/* 读入一个输入置于栈顶 */
                 t = t + 1;
-                printf("input a number");
-                fprintf(fresult, "input a number");
+                printf("input a number: ");
+                fprintf(fresult, "input a number: ");
                 scanf("%d", &(s[t]));
                 fprintf(fresult, "%d\n", s[t]);           
                 break;

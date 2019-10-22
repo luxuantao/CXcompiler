@@ -1,7 +1,7 @@
 {
     var x, y, z;
-    x = 1;
-    y = 2;
-    z = 3;
-    write(x + y + z);
+    read(x, y, z);
+    write(x);
+    write(y);
+    write(z);
 }
