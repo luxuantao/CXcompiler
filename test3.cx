@@ -1,0 +1,7 @@
+{
+    var x, y, z;
+    x = 5;
+    y = 3;
+    write(x % y);
+    write(x ^ y);
+}

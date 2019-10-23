@@ -90,8 +90,8 @@
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST FALSE TRUE 
-%token SELFADD SELFMIUNS REPEAT UNTIL XOR ODD 
-%token BEG END CALL THEN DO PROC VAR
+%token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD 
+%token CALL THEN DO PROC VAR
 %token <ident> IDENT
 %token <number> NUMBER
 
@@ -193,13 +193,10 @@ assignmentstm:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
+        else if (table[$1].kind == variable)
+            gen(sto, lev - table[$1].level, table[$1].adr);
         else
-        {
-            if (table[$1].kind == variable)
-                gen(sto, lev - table[$1].level, table[$1].adr);
-            else
-                yyerror("Symbol should be a variable");
-        }
+            yyerror("Symbol should be a variable");
     }
     ;
 
@@ -270,6 +267,14 @@ term:
     {
         gen(opr, 0, 5);
     }  
+    | term MOD factor
+    {
+        gen(opr, 0, 18);
+    }
+    | term XOR factor
+    {
+        gen(opr, 0, 19);
+    }
     ;
 
 /* 因子 */
@@ -278,18 +283,12 @@ factor:
     { 
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else
-        {
-            if (table[$1].kind == procedure)
+        else if (table[$1].kind == procedure)
                 yyerror("Symbol should not be a procedure");
-            else
-            {
-                if (table[$1].kind == constant)
-                    gen(lit, 0, table[$1].val);
-                else if (table[$1].kind == variable)
-                    gen(lod, lev - table[$1].level, table[$1].adr);
-            }
-        }
+        else if (table[$1].kind == constant)
+            gen(lit, 0, table[$1].val);
+        else if (table[$1].kind == variable)
+            gen(lod, lev - table[$1].level, table[$1].adr);
     }   
     | NUMBER 
     {
@@ -522,6 +521,14 @@ void interpret() {
                 fprintf(fresult, "input a number: ");
                 scanf("%d", &(s[t]));
                 fprintf(fresult, "%d\n", s[t]);           
+                break;
+            case 18:/* 次栈顶项求余栈顶项 */ 
+                t = t - 1;
+                s[t] = s[t] % s[t + 1];
+                break;
+            case 19:/* 次栈顶项异或栈顶项 */
+                t = t - 1;
+                s[t] = s[t] ^ s[t + 1];
                 break;
             }
             break;	

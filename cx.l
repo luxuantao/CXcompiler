@@ -58,10 +58,9 @@ NUM         ([1-9][0-9]*)|0
 "const"    {return CONST;}
 "repeat"   {return REPEAT;}
 "until"    {return UNTIL;}
-"XOR"      {return XOR;}
+"^"        {return XOR;}
+"%"        {return MOD;}
 "ODD"      {return ODD;}
-"begin"    {return BEG;}
-"end"	   {return END;}
 "call"     {return CALL;}
 "then"     {return THEN;}
 "do"       {return DO;}
