@@ -3,5 +3,6 @@
     x = 5;
     y = 3;
     write(x % y);
+    exit;
     write(x ^ y);
 }

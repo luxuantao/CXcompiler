@@ -37,7 +37,7 @@
         enum vartype idtype;
     } table[TXMAX];
 
-    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc};
+    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, loa, sta, hod, cpy, jpe, ext, cla, tss, tsl};
 
     struct instruction {
         enum fct f;
@@ -91,7 +91,7 @@
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST FALSE TRUE 
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD 
-%token CALL THEN DO PROC VAR
+%token CALL THEN DO PROC VAR EXIT
 %token <ident> IDENT
 %token <number> NUMBER
 
@@ -185,6 +185,7 @@ statement:
     assignmentstm
     | readstm 
     | writestm 
+    | exitstm
     ;
 
 /*  赋值语句 */
@@ -235,6 +236,13 @@ writeexplist:
     {
         gen(opr, 0, 14);
         gen(opr, 0, 15);
+    }
+    ;
+
+exitstm:  
+    EXIT SEMICOLON
+    {
+        gen(ext, 0, 0);
     }
     ;
 
@@ -557,6 +565,10 @@ void interpret() {
             if (s[t] == 0)
                 p = i.a;
             t = t - 1;
+            break;
+        case ext:
+            p = 0;
+            // showstack(t, p, s);
             break;
         }
     } while (p != 0);

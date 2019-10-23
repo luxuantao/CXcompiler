@@ -66,6 +66,7 @@ NUM         ([1-9][0-9]*)|0
 "do"       {return DO;}
 "func"     {return PROC;}
 "var"      {return VAR;}
+"exit"     {return EXIT;}
 
 {ID}    {
 				yylval.ident = (char *)malloc(strlen(yytext) + 1);
