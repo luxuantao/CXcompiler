@@ -34,7 +34,7 @@
         int level;
         int adr; /* 地址，仅const不使用 */
         int size;
-        enum vartype idtype;
+        enum vartype type; /* var的具体类型 */
     } table[TXMAX];
 
     enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, loa, sta, hod, cpy, jpe, ext, cla, tss, tsl};
@@ -65,10 +65,10 @@
     int err; // 程序中的错误个数
     extern int line;
 
-    char category[10]; //判断当前id是否是整形还是字符类型还是布尔类型
+    char varType[10]; //判断当前id是否是整形还是字符类型还是布尔类型
 
     void init();
-    void enter(enum object k);
+    void enter(enum vartype t, enum object k);
     int position(char* s);
     void setdx(int n);
     void gen(enum fct x, int y, int z);
@@ -89,14 +89,14 @@
 
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
-%token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST FALSE TRUE 
+%token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD 
 %token CALL THEN DO PROC VAR EXIT
 %token <ident> IDENT
 %token <number> NUMBER
 
 %type <number> ident
-%type <number> vardecl varlist vardef
+%type <number> vardecls vardecl varlist vardef
 // %type <number> get_table_addr get_code_addr
 
 %%
@@ -107,7 +107,7 @@ program:
 
 block:
     LBRACE
-    constdecl vardecl
+    constdecl vardecls
     {
         displaytable();
     }
@@ -136,13 +136,24 @@ constdef:
     {        
         strcpy(id, $1);   
         num = $3;
-        enter(constant);
+        enter(inttype, constant);
+    }
+    ;
+
+vardecls:
+    vardecls vardecl
+    {
+        $$ = $1 + $2;
+    }
+    | vardecl
+    {
+        $$ = $1;
     }
     ;
 
 /*  变量声明 */
 vardecl: 
-    VAR varlist SEMICOLON
+    type varlist SEMICOLON
     {
         $$ = $2;         /* 传递变量声明的个数 */
         setdx($2);
@@ -151,6 +162,21 @@ vardecl:
     {
         $$ = 0;          /* 没有变量声明 */
     } 
+    ;
+
+type:
+    INT
+    {
+        strcpy(varType, "int");
+    }
+    | BOOL
+    {
+        strcpy(varType, "bool");
+    }
+    | CHAR 
+    {
+        strcpy(varType, "char");
+    }
     ;
 
 /* 变量声明列表 */
@@ -170,7 +196,12 @@ vardef:
     IDENT 
     {
         strcpy(id, $1);
-        enter(variable);
+        if (!strcmp(varType, "int")) 
+            enter(inttype, variable); 
+        else if(!strcmp(varType, "char"))
+            enter(chartype, variable); 
+        else if(!strcmp(varType, "bool"))
+            enter(booltype, variable);
         $$ = 1;
     }
     ;
@@ -279,6 +310,7 @@ selfaddminus:
             gen(sto, lev - table[$1].level, table[$1].adr);
         }
     }
+    ;
 
 /* 表达式 */
 expression: 
@@ -365,7 +397,7 @@ void init() {
 }
 
 /* 在符号表中加入一项 */
-void enter(enum object k) {
+void enter(enum vartype t, enum object k) {
     tx = tx + 1;
     strcpy(table[tx].name, id);
     table[tx].kind = k;
@@ -375,6 +407,7 @@ void enter(enum object k) {
         break;
     case variable:
         table[tx].level = lev;
+        table[tx].type = t;
         break;
     case procedure:
         table[tx].level = lev;
@@ -442,7 +475,7 @@ void displaytable() {
             {
             // case array:
             //     printf("    %d array %s ", i, table[i].name);
-            //     printf("lev=%d addr=%d type=%d len=%d\n", table[i].level, table[i].adr, table[i].idtype, table[i].arraylen);
+            //     printf("lev=%d addr=%d type=%d len=%d\n", table[i].level, table[i].adr, table[i].type, table[i].arraylen);
             //     fprintf(ftable, "    %d var   %s ", i, table[i].name);
             //     fprintf(ftable, "lev=%d addr=%d\n", table[i].level, table[i].adr);
             //     break;
@@ -454,7 +487,7 @@ void displaytable() {
                 break;
             case variable:
                 printf("    %d var   %s ", i, table[i].name);
-                printf("lev=%d addr=%d type=%d \n", table[i].level, table[i].adr,  table[i].idtype);
+                printf("lev=%d addr=%d type=%d \n", table[i].level, table[i].adr,  table[i].type);
                 fprintf(ftable, "    %d var   %s ", i, table[i].name);
                 fprintf(ftable, "lev=%d addr=%d\n", table[i].level, table[i].adr);
                 break;

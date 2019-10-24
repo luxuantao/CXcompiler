@@ -45,8 +45,8 @@ NUM         ([1-9][0-9]*)|0
 "++"	   {return SELFADD;}
 "--"	   {return SELFMIUNS;}
 
-"true"     {return TRUE;}
-"false"    {return FALSE;}
+"true"	   {yylval.number=1; return NUMBER;}	
+"false"	   {yylval.number=0; return NUMBER;}
 "if"       {return IF;}
 "else"     {return ELSE;}
 "while"    {return WHILE;}

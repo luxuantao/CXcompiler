@@ -1,9 +1,12 @@
 {
-    var x, y, z;
+    int x, y, z;
+    bool w;
     x = 5;
+    w = false;
     x++;
     y = 3;
     write(x % y);
     /*exit;*/
     write(x ^ y);
+    write(w);
 }
