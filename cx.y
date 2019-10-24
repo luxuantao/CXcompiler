@@ -186,6 +186,7 @@ statement:
     | readstm 
     | writestm 
     | exitstm
+    | selfaddminus
     ;
 
 /*  赋值语句 */
@@ -245,6 +246,39 @@ exitstm:
         gen(ext, 0, 0);
     }
     ;
+
+/*  自增自减语句 */
+selfaddminus: 
+    ident SELFADD SEMICOLON
+    { 
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == procedure)
+            yyerror("Symbol should not be a procedure");
+        else if (table[$1].kind == constant)
+            yyerror("Constant cannot selfadd");
+        else if (table[$1].kind == variable) {
+            gen(lod, lev - table[$1].level, table[$1].adr);
+            gen(lit, 0, 1);
+            gen(opr, 0, 2);
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        }
+    }
+    | ident SELFMIUNS SEMICOLON
+    {
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == procedure)
+            yyerror("Symbol should not be a procedure");
+        else if (table[$1].kind == constant)
+            yyerror("Constant cannot selfminus");
+        else if (table[$1].kind == variable) {
+            gen(lod, lev - table[$1].level, table[$1].adr);
+            gen(lit, 0, 1);
+            gen(opr, 0, 3);
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        }
+    }
 
 /* 表达式 */
 expression: 

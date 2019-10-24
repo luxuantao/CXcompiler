@@ -1,8 +1,9 @@
 {
     var x, y, z;
     x = 5;
+    x++;
     y = 3;
     write(x % y);
-    exit;
+    /*exit;*/
     write(x ^ y);
 }
