@@ -91,13 +91,14 @@
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD 
-%token CALL THEN DO PROC VAR EXIT
+%token CALL DO PROC VAR EXIT
 %token <ident> IDENT
 %token <number> NUMBER
 
 %type <number> ident
 %type <number> vardecls vardecl varlist vardef
-// %type <number> get_table_addr get_code_addr
+%type <number> get_table_addr get_code_addr
+%type <number> elsestm
 
 %%
 
@@ -214,6 +215,8 @@ statement:
     | writestm 
     | exitstm
     | selfaddminus
+    | ifstm
+    | elsestm
     ;
 
 /*  赋值语句 */
@@ -308,6 +311,79 @@ selfaddminus:
     }
     ;
 
+/* 条件语句 */
+ifstm:
+    IF LPAREN condition RPAREN get_code_addr
+    {
+        gen(jpc, 0, 0);
+    }
+    statement elsestm
+    {
+        code[$5].a = $8; //回填，不满足条件时跳到哪里
+    }
+    ;
+
+elsestm:
+    ELSE get_code_addr 
+    {
+        gen(jmp, 0, 0); //满足if条件的直接jmp走
+    } 
+    statement 
+    {
+        $$ = $2 + 1; //jmp的后一条指令位置
+        code[$2].a = cx; //回填，满足if条件的跳到哪里
+    }
+    |   
+    {
+        $$ = cx;
+    }
+    ;
+
+/* 条件表达式 */
+condition: 
+    | factor
+    | ODD expression 
+    {
+        gen(opr, 0, 6);
+    }
+    | NOT expression
+    {
+        gen(opr, 0, 20);
+    }
+    | expression EQL expression 
+    {
+        gen(opr, 0, 8);
+    }
+    | expression NEQ expression 
+    {
+        gen(opr, 0, 9);
+    }
+    | expression LES expression 
+    {
+        gen(opr, 0, 10);
+    }
+    | expression LEQ expression 
+    {
+        gen(opr, 0, 13);
+    }
+    | expression GTR expression 
+    {
+        gen(opr, 0, 12);
+    }
+    | expression GEQ expression 
+    {
+        gen(opr, 0, 11);
+    }
+    | expression AND expression
+    {
+        gen(opr, 0, 21);
+    }
+    | expression OR expression
+    {
+        gen(opr, 0, 22);
+    }
+    ;
+
 /* 表达式 */
 expression: 
     PLUS term
@@ -372,6 +448,39 @@ ident:
     {
         $$ = position($1); 
     }
+    ;
+
+get_table_addr:
+    {
+        $$ = tx;
+    } 
+    ;
+
+get_code_addr:
+    {
+        $$ = cx;
+    }
+    ;
+
+inc_level:
+    {
+        lev++;               
+        if (lev > LEVMAX)   /* 嵌套层数过多 */
+            yyerror("Lev is too big");    
+    }
+    ;
+
+inc_px:
+    {
+        px++;              
+    }     
+    ;
+
+dec_level_px:
+    {
+        lev--;
+        px--;              
+    }    
     ;
 
 %%
@@ -600,6 +709,17 @@ void interpret() {
             case 19:/* 次栈顶项异或栈顶项 */
                 t = t - 1;
                 s[t] = s[t] ^ s[t + 1];
+                break;
+            case 20:/* 栈顶的值取not */
+                s[t] = !s[t];
+                break;
+            case 21:/* 次栈顶项and栈顶项 */
+                t = t - 1;
+                s[t] = s[t] && s[t + 1];
+                break;
+            case 22:/* 次栈顶项or栈顶项 */
+                t = t - 1;
+                s[t] = s[t] || s[t + 1];
                 break;
             }
             break;	

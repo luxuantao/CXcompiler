@@ -62,7 +62,6 @@ NUM         ([1-9][0-9]*)|0
 "%"        {return MOD;}
 "ODD"      {return ODD;}
 "call"     {return CALL;}
-"then"     {return THEN;}
 "do"       {return DO;}
 "func"     {return PROC;}
 "var"      {return VAR;}
