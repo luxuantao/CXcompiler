@@ -22,8 +22,8 @@
 
     enum vartype {
         inttype,
-        chartype,
-        booltype
+        booltype,
+        chartype        
     };
 
     /* 符号表结构 */
@@ -109,6 +109,7 @@ block:
     LBRACE
     constdecl vardecls
     {
+        setdx($3);
         displaytable();
     }
     statements
@@ -141,13 +142,13 @@ constdef:
     ;
 
 vardecls:
-    vardecls vardecl
+    vardecls vardecl 
     {
         $$ = $1 + $2;
     }
-    | vardecl
+    |
     {
-        $$ = $1;
+        $$ = 0;
     }
     ;
 
@@ -156,12 +157,7 @@ vardecl:
     type varlist SEMICOLON
     {
         $$ = $2;         /* 传递变量声明的个数 */
-        setdx($2);
     }
-    |
-    {
-        $$ = 0;          /* 没有变量声明 */
-    } 
     ;
 
 type:
