@@ -1,5 +1,5 @@
 {
-    var x, y, z;
+    int x, y, z;
     read(x, y, z);
     write(x);
     write(y);

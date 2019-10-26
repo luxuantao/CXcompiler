@@ -90,7 +90,7 @@
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
-%token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD 
+%token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD TRUE FALSE
 %token CALL DO PROC VAR EXIT
 %token <ident> IDENT
 %token <number> NUMBER
@@ -99,6 +99,9 @@
 %type <number> vardecls vardecl varlist vardef
 %type <number> get_table_addr get_code_addr
 %type <number> elsestm
+
+%nonassoc IFX
+%nonassoc ELSE
 
 %%
 
@@ -216,7 +219,7 @@ statement:
     | exitstm
     | selfaddminus
     | ifstm
-    | elsestm
+    | whilestm
     ;
 
 /*  赋值语句 */
@@ -229,6 +232,17 @@ assignmentstm:
             gen(sto, lev - table[$1].level, table[$1].adr);
         else
             yyerror("Symbol should be a variable");
+    }
+    |
+    ident BECOMES trueorfalse SEMICOLON
+    {
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == variable && table[$1].type == booltype) {
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        }
+        else
+            yyerror("Symbol type should be a bool");
     }
     ;
 
@@ -313,11 +327,11 @@ selfaddminus:
 
 /* 条件语句 */
 ifstm:
-    IF LPAREN condition RPAREN get_code_addr
+    IF LPAREN bexpr RPAREN get_code_addr
     {
         gen(jpc, 0, 0);
     }
-    statement elsestm
+    statement elsestm 
     {
         code[$5].a = $8; //回填，不满足条件时跳到哪里
     }
@@ -333,58 +347,124 @@ elsestm:
         $$ = $2 + 1; //jmp的后一条指令位置
         code[$2].a = cx; //回填，满足if条件的跳到哪里
     }
-    |   
+    | %prec IFX
     {
         $$ = cx;
     }
     ;
 
-/* 条件表达式 */
-condition: 
-    | factor
-    | ODD expression 
+whilestm:
+    WHILE get_code_addr LPAREN bexpr RPAREN get_code_addr
     {
-        gen(opr, 0, 6);
+        gen(jpc, 0, 0);
     }
-    | NOT expression
+    statement
     {
-        gen(opr, 0, 20);
-    }
-    | expression EQL expression 
-    {
-        gen(opr, 0, 8);
-    }
-    | expression NEQ expression 
-    {
-        gen(opr, 0, 9);
-    }
-    | expression LES expression 
-    {
-        gen(opr, 0, 10);
-    }
-    | expression LEQ expression 
-    {
-        gen(opr, 0, 13);
-    }
-    | expression GTR expression 
-    {
-        gen(opr, 0, 12);
-    }
-    | expression GEQ expression 
-    {
-        gen(opr, 0, 11);
-    }
-    | expression AND expression
-    {
-        gen(opr, 0, 21);
-    }
-    | expression OR expression
-    {
-        gen(opr, 0, 22);
+        gen(jmp, 0, $2);
+        code[$6].a = cx;
     }
     ;
 
-/* 表达式 */
+/* 布尔表达式 */
+bexpr:
+    bexpr OR bterm 
+    {
+        gen(opr, 0, 22);
+    }
+    | bterm
+    ;
+
+bterm:
+    bterm AND bfactor 
+    {
+        gen(opr, 0, 21);
+    }
+    | bfactor
+    ;
+
+bfactor:
+    ident 
+    { 
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == procedure)
+            yyerror("Symbol should not be a procedure");
+        else if (table[$1].kind == constant)
+            gen(lit, 0, table[$1].val);
+        else if (table[$1].kind == variable)
+            gen(lod, lev - table[$1].level, table[$1].adr);
+    }   
+    | trueorfalse
+    | NOT bfactor 
+    {
+        gen(opr, 0, 20);
+    }
+    | ODD idornum 
+    {
+        gen(opr, 0, 6);
+    }
+    | LPAREN bexpr RPAREN 
+    | rel
+    ;
+
+rel:
+    idornum EQL expression 
+    {
+        gen(opr, 0, 8);
+    }
+    | idornum NEQ expression 
+    {
+        gen(opr, 0, 9);
+    }
+    | idornum LES expression 
+    {
+        gen(opr, 0, 10);
+    }
+    | idornum LEQ expression 
+    {
+        gen(opr, 0, 13);
+    }
+    | idornum GTR expression 
+    {
+        gen(opr, 0, 12);
+    }
+    | idornum GEQ expression 
+    {
+        gen(opr, 0, 11);
+    }
+    ;
+
+idornum:
+    ident
+    { 
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == procedure)
+            yyerror("Symbol should not be a procedure");
+        else if (table[$1].kind == constant)
+            gen(lit, 0, table[$1].val);
+        else if (table[$1].kind == variable)
+            gen(lod, lev - table[$1].level, table[$1].adr);
+    }   
+    | NUMBER 
+    {
+        gen(lit, 0, $1);
+    }
+    ;
+
+trueorfalse:
+    TRUE
+    {
+        gen(lit, 0, 1);
+    }
+    |
+    FALSE
+    {
+        gen(lit, 0, 0);
+    }
+    ;
+
+/* 算术表达式 */
 expression: 
     PLUS term
     | MINUS term
@@ -425,21 +505,7 @@ term:
 
 /* 因子 */
 factor: 
-    ident
-    { 
-        if ($1 == 0)
-            yyerror("Symbol does not exist");
-        else if (table[$1].kind == procedure)
-                yyerror("Symbol should not be a procedure");
-        else if (table[$1].kind == constant)
-            gen(lit, 0, table[$1].val);
-        else if (table[$1].kind == variable)
-            gen(lod, lev - table[$1].level, table[$1].adr);
-    }   
-    | NUMBER 
-    {
-        gen(lit, 0, $1);
-    }
+    idornum
     | LPAREN expression RPAREN
     ;
 

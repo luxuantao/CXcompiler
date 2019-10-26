@@ -45,8 +45,8 @@ NUM         ([1-9][0-9]*)|0
 "++"	   {return SELFADD;}
 "--"	   {return SELFMIUNS;}
 
-"true"	   {yylval.number=1; return NUMBER;}	
-"false"	   {yylval.number=0; return NUMBER;}
+"true"	   {return TRUE;}	
+"false"	   {return FALSE;}
 "if"       {return IF;}
 "else"     {return ELSE;}
 "while"    {return WHILE;}
@@ -60,7 +60,7 @@ NUM         ([1-9][0-9]*)|0
 "until"    {return UNTIL;}
 "^"        {return XOR;}
 "%"        {return MOD;}
-"ODD"      {return ODD;}
+"odd"      {return ODD;}
 "call"     {return CALL;}
 "do"       {return DO;}
 "func"     {return PROC;}
@@ -68,20 +68,20 @@ NUM         ([1-9][0-9]*)|0
 "exit"     {return EXIT;}
 
 {ID}    {
-				yylval.ident = (char *)malloc(strlen(yytext) + 1);
-				strcpy(yylval.ident, yytext);
-				return IDENT;
-		   }
+			yylval.ident = (char *)malloc(strlen(yytext) + 1);
+			strcpy(yylval.ident, yytext);
+			return IDENT;
+		}
 
 {NUM}   {
-				yylval.number = atoi(yytext);
-				return NUMBER;
-		   }
+			yylval.number = atoi(yytext);
+			return NUMBER;
+		}
 
-.          {
-				sprintf(msg, "yyerror: unexpected character %s", yytext);
-                yyerror(msg);
-           }
+.       {
+			sprintf(msg, "yyerror: unexpected character %s", yytext);
+			yyerror(msg);
+		}
 
 %%
 
