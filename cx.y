@@ -93,7 +93,7 @@
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD TRUE FALSE
-%token CALL DO PROC VAR EXIT
+%token CALL DO FUNC EXIT
 %token <ident> IDENT
 %token <number> NUMBER
 
@@ -113,10 +113,19 @@ program:
 
 mainblock:
     LBRACE
+    {
+        $<number>$ = cx;
+        gen(jmp, 0, 0);
+    }
     constdecl vardecls
     {
-        setdx($3);
-        gen(ini, 0, $3 + 3);
+        setdx($4);
+    }    
+    procdecls
+    {
+        code[$<number>2].a = cx;
+        gen(ini, 0, $4 + 3);
+        printf("mainblock:\n");
         displaytable();
     }
     statements
@@ -137,6 +146,7 @@ blockstm:
     {
         setdx($5);
         gen(ini, 0, $5 + 3);
+        printf("blockstm:\n");
         displaytable();
     }
     statements
@@ -233,6 +243,48 @@ vardef:
     }
     ;
 
+/* 函数 */
+procdecls: 
+    procdecls procdecl
+    |
+    ;
+
+procdecl:
+    FUNC IDENT LPAREN RPAREN 
+    {
+        strcpy(id, $2);
+        enter(-1, procedure);
+    }
+    procbody
+    ;
+
+procbody:
+    LBRACE
+    inc_level
+    {
+        leveltable[lev] = tx;
+    }
+    get_table_addr
+    constdecl vardecls
+    {
+        setdx($6);
+        table[$4].adr = cx;
+        table[$4].size = $6 + 3;
+        gen(ini, 0, $6 + 3);
+        printf("procbody:\n");        
+        displaytable();
+    }
+    statements
+    {
+        gen(opr, 0, 0);
+    }
+    RBRACE
+    {
+        tx = leveltable[lev];
+    }
+    dec_level;
+    ;
+
 /*  语句 */
 statements:
     statements statement
@@ -248,6 +300,7 @@ statement:
     | ifstm
     | whilestm
     | blockstm
+    | callstm
     ;
 
 /*  赋值语句 */
@@ -390,6 +443,18 @@ whilestm:
     {
         gen(jmp, 0, $2);
         code[$6].a = cx;
+    }
+    ;
+
+callstm:
+    CALL ident SEMICOLON
+    {
+        if ($2 == 0)
+            yyerror("Call symbol does not exist");
+        else if (table[$2].kind != procedure)
+            yyerror("Symbol should be a procedure");
+        else
+            gen(cal, lev - table[$2].level, table[$2].adr);    
     }
     ;
 

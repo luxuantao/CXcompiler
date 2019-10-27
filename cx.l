@@ -63,8 +63,7 @@ NUM         ([1-9][0-9]*)|0
 "odd"      {return ODD;}
 "call"     {return CALL;}
 "do"       {return DO;}
-"func"     {return PROC;}
-"var"      {return VAR;}
+"func"     {return FUNC;}
 "exit"     {return EXIT;}
 
 {ID}    {
