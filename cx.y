@@ -37,7 +37,8 @@
         enum vartype type; /* var的具体类型 */
     } table[TXMAX];
 
-    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, loa, sta, hod, cpy, jpe, ext, cla, tss, tsl};
+    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, loa, 
+                sta, hod, cpy, jpe, ext, cla, tss, tsl, blo, fre};
 
     struct instruction {
         enum fct f;
@@ -50,6 +51,7 @@
     int px; // 嵌套过程索引表proctable的指针
     int lev; // 层次记录
     int proctable[5]; // 嵌套过程索引表
+    int leveltable[5]; // 嵌套索引表
     char id[AL];
     int num;
     bool listswitch;   /* 显示虚拟机代码与否 */
@@ -106,22 +108,47 @@
 %%
 
 program:
-    block
+    mainblock
     ;
 
-block:
+mainblock:
     LBRACE
     constdecl vardecls
     {
         setdx($3);
+        gen(ini, 0, $3 + 3);
+        displaytable();
+    }
+    statements
+    RBRACE
+    {
+        gen(opr, 0, 0);
+    }
+	;
+
+blockstm:
+    LBRACE
+    inc_level
+    {
+        leveltable[lev] = tx;
+        gen(blo, 0, 0);
+    }
+    constdecl vardecls
+    {
+        setdx($5);
+        gen(ini, 0, $5 + 3);
         displaytable();
     }
     statements
     {
-        gen(jmp, 0, 0);
+        gen(fre, 0, 0);
     }
     RBRACE
-	;
+    {
+        tx = leveltable[lev];
+    }
+    dec_level;
+    ;
 
 /*  常量声明 */
 constdecl: 
@@ -220,6 +247,7 @@ statement:
     | selfaddminus
     | ifstm
     | whilestm
+    | blockstm
     ;
 
 /*  赋值语句 */
@@ -228,10 +256,10 @@ assignmentstm:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else if (table[$1].kind == variable)
+        else if (table[$1].kind == variable && table[$1].type != booltype)
             gen(sto, lev - table[$1].level, table[$1].adr);
         else
-            yyerror("Symbol should be a variable");
+            yyerror("Symbol should be a variable and type is not bool");
     }
     |
     ident BECOMES trueorfalse SEMICOLON
@@ -536,6 +564,12 @@ inc_level:
     }
     ;
 
+dec_level:
+    {
+        lev--;
+    }
+    ;
+
 inc_px:
     {
         px++;              
@@ -626,7 +660,7 @@ void listall() {
     int i;
     char name[][5] = {
         {"lit"},{"opr"},{"lod"},{"sto"},{"cal"},{"int"},{"jmp"},{"jpc"},{"loa"},{"sta"},{"hod"},
-        {"cpy"},{"jpe"},{"ext"},{"cla"},{"tss"},{"tsl"}
+        {"cpy"},{"jpe"},{"ext"},{"cla"},{"tss"},{"tsl"},{"blo"},{"fre"}
     };
     if (listswitch) {
         for (i = 0; i < cx; i++) {
@@ -674,6 +708,16 @@ void displaytable() {
         fprintf(ftable, "\n");
     }
 }
+
+// void showstack(int t, int p, int *s) {
+//     int i;
+//     fprintf(fstack, "pcode %2d: |", p);
+//     for(i = 1; i <= t; i++)
+//         fprintf(fstack, " %2d |", s[i]);
+//     for(; t < 80; t++)
+//         fprintf(fstack, "%s", " ");
+//     fprintf(fstack, "%s", "\n");
+// }
 
 /* 解释程序 */
 void interpret() {
@@ -817,7 +861,15 @@ void interpret() {
             break;
         case ext:
             p = 0;
-            // showstack(t, p, s);
+            break;
+        case blo: //不改变p
+            s[t + 1] = base(i.l, s, b);
+            s[t + 2] = b;
+            b = t + 1;
+            break;
+        case fre: //不改变p
+            t = b - 1;
+            b = s[t + 2];
             break;
         }
     } while (p != 0);

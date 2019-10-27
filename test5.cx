@@ -3,10 +3,12 @@
     bool x;
     a = 2;
     x = true;
-    if (x && a == 1 + 1 || false) 
+    if (x && a == 1 + 1 || false) {
         write(666);
-    if (true && false)
+    }
+    if (true && false) {
         write(777);
+    }
     if (true || false)
         write(888);
     if (true && (x || false)) 
