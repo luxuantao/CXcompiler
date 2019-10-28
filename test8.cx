@@ -1,0 +1,13 @@
+{
+    int x;
+    x = 1;
+    do {
+        x++;
+    } while (x < 3);
+    write(x);
+
+    repeat {
+        x--;
+    } until (x == 1);
+    write(x);
+}

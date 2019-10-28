@@ -6,9 +6,15 @@
         write(x);
         write(y);
     }
+    func b() {
+        int x;
+        x = 3;
+        write(x);
+    }
     x = 1;
     y = 666;
     if (x == 1) {
         call a;
     }
+    call b;
 }

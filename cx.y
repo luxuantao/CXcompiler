@@ -50,7 +50,7 @@
     int cx; // pcode索引
     int px; // 嵌套过程索引表proctable的指针
     int lev; // 层次记录
-    int proctable[5]; // 嵌套过程索引表
+    // int proctable[5]; // 嵌套过程索引表
     int leveltable[5]; // 嵌套索引表
     char id[AL];
     int num;
@@ -301,6 +301,8 @@ statement:
     | whilestm
     | blockstm
     | callstm
+    | dowhilestm
+    | repeatstm
     ;
 
 /*  赋值语句 */
@@ -444,6 +446,24 @@ whilestm:
         gen(jmp, 0, $2);
         code[$6].a = cx;
     }
+    ;
+
+dowhilestm:
+    DO get_code_addr statement get_code_addr
+    WHILE LPAREN bexpr get_code_addr
+    {
+        gen(jpe, 0, $2);
+    }
+    RPAREN SEMICOLON
+    ;      
+
+repeatstm:
+    REPEAT get_code_addr statement get_code_addr
+    UNTIL LPAREN bexpr get_code_addr
+    {
+        gen(jpc, 0, $2);
+    }
+    RPAREN SEMICOLON
     ;
 
 callstm:
@@ -635,18 +655,18 @@ dec_level:
     }
     ;
 
-inc_px:
-    {
-        px++;              
-    }     
-    ;
+// inc_px:
+//     {
+//         px++;              
+//     }     
+//     ;
 
-dec_level_px:
-    {
-        lev--;
-        px--;              
-    }    
-    ;
+// dec_level_px:
+//     {
+//         lev--;
+//         px--;              
+//     }    
+//     ;
 
 %%
 
@@ -661,7 +681,7 @@ void init() {
     cx = 0;
     px = 0;  
     lev = 0;   
-    proctable[0] = 0;
+    leveltable[0] = 0;
     num = 0;
     err = 0;
 }
@@ -921,6 +941,11 @@ void interpret() {
             break;
         case jpc: /* 如果栈顶等于0条件跳转 */
             if (s[t] == 0)
+                p = i.a;
+            t = t - 1;
+            break;
+        case jpe: /* 如果栈顶等于1条件跳转 */
+            if (s[t]) 
                 p = i.a;
             t = t - 1;
             break;
