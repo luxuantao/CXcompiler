@@ -93,7 +93,7 @@
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
 %token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD TRUE FALSE
-%token CALL DO FUNC EXIT
+%token CALL DO FUNC EXIT FOR
 %token <ident> IDENT
 %token <number> NUMBER
 
@@ -101,6 +101,7 @@
 %type <number> vardecls vardecl varlist vardef
 %type <number> get_table_addr get_code_addr
 %type <number> elsestm
+%type <number> for2
 
 %nonassoc IFX
 %nonassoc ELSE
@@ -296,13 +297,14 @@ statement:
     | readstm 
     | writestm 
     | exitstm
-    | selfaddminus
+    | selfaddminus SEMICOLON
     | ifstm
     | whilestm
     | blockstm
     | callstm
     | dowhilestm
     | repeatstm
+    | forstm
     ;
 
 /*  赋值语句 */
@@ -316,8 +318,7 @@ assignmentstm:
         else
             yyerror("Symbol should be a variable and type is not bool");
     }
-    |
-    ident BECOMES trueorfalse SEMICOLON
+    | ident BECOMES trueorfalse SEMICOLON
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
@@ -376,7 +377,7 @@ exitstm:
 
 /*  自增自减语句 */
 selfaddminus: 
-    ident SELFADD SEMICOLON
+    ident SELFADD 
     { 
         if ($1 == 0)
             yyerror("Symbol does not exist");
@@ -391,7 +392,7 @@ selfaddminus:
             gen(sto, lev - table[$1].level, table[$1].adr);
         }
     }
-    | ident SELFMIUNS SEMICOLON
+    | ident SELFMIUNS 
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
@@ -464,6 +465,51 @@ repeatstm:
         gen(jpc, 0, $2);
     }
     RPAREN SEMICOLON
+    ;
+
+forstm:
+    FOR LPAREN for1 get_code_addr for2 
+    {
+        if ($5 == 1)
+            gen(lit, 0, 1);
+    }
+    SEMICOLON get_code_addr
+    {
+        gen(jpe, 0, 0);
+        gen(jmp, 0, 0);
+    } 
+    get_code_addr for3 RPAREN
+    {
+        gen(jmp, 0, $4);
+    } 
+    get_code_addr
+    statement
+    {
+        gen(jmp, 0, $10);
+        code[$8].a = $14;
+        code[$8 + 1].a = cx;
+    }
+    ;
+
+for1:
+    assignmentstm
+    | SEMICOLON
+    ;
+
+for2:
+    bexpr
+    {
+        $$ = 0; 
+    }
+    |
+    {
+        $$ = 1; //无条件
+    }
+    ;
+
+for3:
+    selfaddminus
+    |
     ;
 
 callstm:
