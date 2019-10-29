@@ -82,6 +82,9 @@
     int yylex();
     void yyerror(char *s);
     void redirectInput(FILE *fin);
+
+    #define YYDEBUG 1
+    #define YYERROR_VERBOSE 1
 %}
 
 %union {
