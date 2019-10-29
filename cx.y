@@ -22,8 +22,7 @@
 
     enum vartype {
         inttype,
-        booltype,
-        chartype        
+        booltype
     };
 
     /* 符号表结构 */
@@ -37,8 +36,7 @@
         enum vartype type; /* var的具体类型 */
     } table[TXMAX];
 
-    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, loa, 
-                sta, hod, cpy, jpe, ext, cla, tss, tsl, blo, fre};
+    enum fct {lit, opr, lod, sto, cal, ini, jmp, jpc, jpe, ext, blo, fre};
 
     struct instruction {
         enum fct f;
@@ -48,15 +46,13 @@
 
     int tx; //符号表当前尾指针
     int cx; // pcode索引
-    int px; // 嵌套过程索引表proctable的指针
     int lev; // 层次记录
-    // int proctable[5]; // 嵌套过程索引表
     int leveltable[5]; // 嵌套索引表
     char id[AL];
     int num;
     bool listswitch;   /* 显示虚拟机代码与否 */
     bool tableswitch;  /* 显示符号表与否 */
-    int dx;
+    bool stackswitch;  /* 显示栈信息与否 */
 
     FILE* fin;      /* 输入源文件 */
     FILE* ftable;   /* 输出符号表 */
@@ -239,8 +235,6 @@ vardef:
         strcpy(id, $1);
         if (!strcmp(varType, "int")) 
             enter(inttype, variable); 
-        else if(!strcmp(varType, "char"))
-            enter(chartype, variable); 
         else if(!strcmp(varType, "bool"))
             enter(booltype, variable);
         $$ = 1;
@@ -316,10 +310,10 @@ assignmentstm:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else if (table[$1].kind == variable && table[$1].type != booltype)
+        else if (table[$1].kind == variable && table[$1].type == inttype)
             gen(sto, lev - table[$1].level, table[$1].adr);
         else
-            yyerror("Symbol should be a variable and type is not bool");
+            yyerror("Symbol should be a variable and type should be int");
     }
     | ident BECOMES trueorfalse SEMICOLON
     {
@@ -329,7 +323,7 @@ assignmentstm:
             gen(sto, lev - table[$1].level, table[$1].adr);
         }
         else
-            yyerror("Symbol type should be a bool");
+            yyerror("Symbol type should be a bool variable");
     }
     ;
 
@@ -347,8 +341,13 @@ readvarlist:
 readvar: 
     ident 
     {
-        gen(opr, 0, 16);
-        gen(sto, lev - table[$1].level, table[$1].adr);
+        if (table[$1].kind == variable && table[$1].type == inttype) {
+            gen(opr, 0, 16);
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        }
+        else {
+            yyerror("Can only read int variable");
+        }
     }
     ;
 
@@ -704,19 +703,6 @@ dec_level:
     }
     ;
 
-// inc_px:
-//     {
-//         px++;              
-//     }     
-//     ;
-
-// dec_level_px:
-//     {
-//         lev--;
-//         px--;              
-//     }    
-//     ;
-
 %%
 
 void yyerror(char *s) {
@@ -728,7 +714,6 @@ void yyerror(char *s) {
 void init() {
     tx = 0;
     cx = 0;
-    px = 0;  
     lev = 0;   
     leveltable[0] = 0;
     num = 0;
@@ -793,8 +778,7 @@ void gen(enum fct x, int y, int z) {
 void listall() {
     int i;
     char name[][5] = {
-        {"lit"},{"opr"},{"lod"},{"sto"},{"cal"},{"int"},{"jmp"},{"jpc"},{"loa"},{"sta"},{"hod"},
-        {"cpy"},{"jpe"},{"ext"},{"cla"},{"tss"},{"tsl"},{"blo"},{"fre"}
+        {"lit"},{"opr"},{"lod"},{"sto"},{"cal"},{"int"},{"jmp"},{"jpc"},{"jpe"},{"ext"},{"blo"},{"fre"}
     };
     if (listswitch) {
         for (i = 0; i < cx; i++) {
@@ -812,12 +796,6 @@ void displaytable() {
         for (i = 1; i <= tx; i++) {
             switch (table[i].kind)
             {
-            // case array:
-            //     printf("    %d array %s ", i, table[i].name);
-            //     printf("lev=%d addr=%d type=%d len=%d\n", table[i].level, table[i].adr, table[i].type, table[i].arraylen);
-            //     fprintf(ftable, "    %d var   %s ", i, table[i].name);
-            //     fprintf(ftable, "lev=%d addr=%d\n", table[i].level, table[i].adr);
-            //     break;
             case constant:
                 printf("    %d const %s ", i, table[i].name);
                 printf("val=%d\n", table[i].val);
@@ -843,15 +821,15 @@ void displaytable() {
     }
 }
 
-// void showstack(int t, int p, int *s) {
-//     int i;
-//     fprintf(fstack, "pcode %2d: |", p);
-//     for(i = 1; i <= t; i++)
-//         fprintf(fstack, " %2d |", s[i]);
-//     for(; t < 80; t++)
-//         fprintf(fstack, "%s", " ");
-//     fprintf(fstack, "%s", "\n");
-// }
+void printstack(int t, int p, int *s) {
+    int i;
+    if (stackswitch) {
+        fprintf(fstack, "pcode %2d: |", p);
+        for (i = 1; i <= t; i++)
+            fprintf(fstack, " %2d |", s[i]);
+        fprintf(fstack, "%s", "\n");
+    }
+}
 
 /* 解释程序 */
 void interpret() {
@@ -870,12 +848,12 @@ void interpret() {
 	do {
 		i = code[p];  /* 读当前指令 */
         p = p + 1;
-        // printf("p:%d\n", p);
         switch (i.f)
         {
         case lit: /* 将常量a的值取到栈顶 */
             t = t + 1;
             s[t] = i.a;
+            printstack(t, p, s);
             break;
         case opr: /* 数学、逻辑运算 */
             switch(i.a) {
@@ -939,7 +917,7 @@ void interpret() {
                 printf("\n");
                 fprintf(fresult,"\n");
                 break;
-            case 16:/* 读入一个输入置于栈顶 */
+            case 16:/* 读入一个数置于栈顶 */
                 t = t + 1;
                 printf("input a number: ");
                 fprintf(fresult, "input a number: ");
@@ -966,14 +944,17 @@ void interpret() {
                 s[t] = s[t] || s[t + 1];
                 break;
             }
+            printstack(t, p, s);
             break;	
         case lod: /* 取相对当前过程的数据基地址为a的内存的值到栈顶 */
             t = t + 1;
             s[t] = s[base(i.l, s, b) + i.a];
+            printstack(t, p, s);            
             break;
         case sto: /* 栈顶的值存到相对当前过程的数据基地址为a的内存 */
             s[base(i.l, s, b) + i.a] = s[t];
             t = t - 1;
+            printstack(t, p, s);
             break;
         case cal: /* 调用子过程 */
             s[t + 1] = base(i.l, s, b); /* 将父过程基地址入栈，即建立静态链 */
@@ -981,34 +962,42 @@ void interpret() {
             s[t + 3] = p; /* 将当前指令指针入栈，即保存返回地址 */
             b = t + 1;  /* 改变基地址指针值为新过程的基地址 */
             p = i.a;  /* 跳转 */
+            printstack(t, p, s);
             break;
         case ini: /* 在数据栈中为被调用的过程开辟a个单元的数据区 */
             t = t + i.a;
+            printstack(t, p, s);
             break;
         case jmp: /* 直接跳转 */
             p = i.a;
+            printstack(t, p, s);
             break;
         case jpc: /* 如果栈顶等于0条件跳转 */
             if (s[t] == 0)
                 p = i.a;
             t = t - 1;
+            printstack(t, p, s);
             break;
         case jpe: /* 如果栈顶等于1条件跳转 */
             if (s[t]) 
                 p = i.a;
             t = t - 1;
+            printstack(t, p, s);
             break;
         case ext:
             p = 0;
+            printstack(t, p, s);
             break;
         case blo: //不改变p
             s[t + 1] = base(i.l, s, b);
             s[t + 2] = b;
             b = t + 1;
+            printstack(t, p, s);
             break;
         case fre: //不改变p
             t = b - 1;
             b = s[t + 2];
+            printstack(t, p, s);
             break;
         }
     } while (p != 0);
@@ -1034,7 +1023,9 @@ int main(int argc, char *argv[]) {
                 listswitch = true;
             } else if (strcmp(argv[i], "-t") == 0) {  /* 是否输出符号表 */
                 tableswitch = true;
-            }
+            } else if (strcmp(argv[i], "-s") == 0) {  /* 是否输出栈信息 */
+                stackswitch = true;
+            } 
         }
     }
     if ((fin = fopen(argv[argc - 1], "r")) == NULL) {
