@@ -230,7 +230,7 @@ varlist:
     {
         $$ = $1 + $3;  /* 变量声明的个数相加 */
     }
-    | error {}
+    | error {/*错误处理*/} 
     ;
 
 /* 单个变量 */
@@ -307,7 +307,7 @@ statement:
     | dowhilestm
     | repeatstm
     | forstm
-    | error  // 错误处理
+    | error {/*错误处理*/}
     ;
 
 /*  赋值语句 */
@@ -325,11 +325,10 @@ assignmentstm:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else if (table[$1].kind == variable && table[$1].type == booltype) {
+        else if (table[$1].kind == variable && table[$1].type == booltype) 
             gen(sto, lev - table[$1].level, table[$1].adr);
-        }
         else
-            yyerror("Symbol type should be a bool variable");
+            yyerror("Symbol should be a variable and type should be bool");
     }
     ;
 
@@ -340,7 +339,8 @@ readstm:
 
 /* 一个或多个读语句的变量 */
 readvarlist: 
-    readvar | readvarlist COMMA readvar 
+    readvar 
+    | readvarlist COMMA readvar 
     ;
 
 /* 读语句变量 */
@@ -390,7 +390,7 @@ selfaddminus:
         if ($1 == 0)
             yyerror("Symbol does not exist");
         else if (table[$1].kind == procedure)
-            yyerror("Symbol should not be a procedure");
+            yyerror("Procedure cannot selfadd");
         else if (table[$1].kind == constant)
             yyerror("Constant cannot selfadd");
         else if (table[$1].kind == variable) {
@@ -405,7 +405,7 @@ selfaddminus:
         if ($1 == 0)
             yyerror("Symbol does not exist");
         else if (table[$1].kind == procedure)
-            yyerror("Symbol should not be a procedure");
+            yyerror("Procedure cannot selfminus");
         else if (table[$1].kind == constant)
             yyerror("Constant cannot selfminus");
         else if (table[$1].kind == variable) {
@@ -526,7 +526,7 @@ callstm:
         if ($2 == 0)
             yyerror("Call symbol does not exist");
         else if (table[$2].kind != procedure)
-            yyerror("Symbol should be a procedure");
+            yyerror("Call symbol should be a procedure");
         else
             gen(cal, lev - table[$2].level, table[$2].adr);    
     }
@@ -784,7 +784,8 @@ void gen(enum fct x, int y, int z) {
 void listall() {
     int i;
     char name[][5] = {
-        {"lit"},{"opr"},{"lod"},{"sto"},{"cal"},{"int"},{"jmp"},{"jpc"},{"jpe"},{"ext"},{"blo"},{"fre"}
+        {"lit"}, {"opr"}, {"lod"}, {"sto"}, {"cal"}, {"int"}, 
+        {"jmp"}, {"jpc"}, {"jpe"}, {"ext"}, {"blo"}, {"fre"}
     };
     if (listswitch) {
         for (i = 0; i < cx; i++) {
