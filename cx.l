@@ -41,7 +41,6 @@ NUM         ([1-9][0-9]*)|0
 "{"        {return LBRACE;}
 "}"        {return RBRACE;}
 ","        {return COMMA;}
-"."        {return PERIOD;}
 "++"	   {return SELFADD;}
 "--"	   {return SELFMIUNS;}
 
@@ -54,7 +53,6 @@ NUM         ([1-9][0-9]*)|0
 "read"     {return READ;}
 "int"      {return INT;}
 "bool"     {return BOOL;}
-"char"     {return CHAR;}
 "const"    {return CONST;}
 "repeat"   {return REPEAT;}
 "until"    {return UNTIL;}

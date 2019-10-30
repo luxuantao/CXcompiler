@@ -63,7 +63,7 @@
     int err; // 程序中的错误个数
     extern int line;
 
-    char varType[10]; //判断当前id是否是整形还是字符类型还是布尔类型
+    char varType[10]; //判断当前id是整形还是布尔类型
 
     void init();
     void enter(enum vartype t, enum object k);
@@ -79,7 +79,6 @@
     void yyerror(char *s);
     void redirectInput(FILE *fin);
 
-    #define YYDEBUG 1
     #define YYERROR_VERBOSE 1
 %}
 
@@ -89,8 +88,8 @@
 }
 
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
-%token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA PERIOD
-%token IF ELSE WHILE WRITE READ INT BOOL CHAR CONST
+%token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
+%token IF ELSE WHILE WRITE READ INT BOOL CONST
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD TRUE FALSE
 %token CALL DO FUNC EXIT FOR
 %token <ident> IDENT
@@ -163,6 +162,10 @@ blockstm:
 /*  常量声明 */
 constdecl: 
     CONST constlist SEMICOLON
+    | CONST constlist  
+    {
+        yyerror("Miss SEMICOLON");  //错误处理，常量声明缺少结尾分号
+    }
     |
     ;
 
@@ -199,6 +202,11 @@ vardecl:
     {
         $$ = $2;         /* 传递变量声明的个数 */
     }
+    | type varlist  
+    {
+        $$ = $2;         
+        yyerror("Miss SEMICOLON");  //错误处理，变量声明缺少结尾分号
+    }
     ;
 
 type:
@@ -209,10 +217,6 @@ type:
     | BOOL
     {
         strcpy(varType, "bool");
-    }
-    | CHAR 
-    {
-        strcpy(varType, "char");
     }
     ;
 
@@ -226,6 +230,7 @@ varlist:
     {
         $$ = $1 + $3;  /* 变量声明的个数相加 */
     }
+    | error {}
     ;
 
 /* 单个变量 */
@@ -302,6 +307,7 @@ statement:
     | dowhilestm
     | repeatstm
     | forstm
+    | error  // 错误处理
     ;
 
 /*  赋值语句 */
