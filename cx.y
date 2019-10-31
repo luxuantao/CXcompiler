@@ -76,7 +76,7 @@
     int base(int l, int *s, int b);
     
     int yylex();
-    void yyerror(char *s);
+    void yyerror(const char *s);
     void redirectInput(FILE *fin);
 
     #define YYERROR_VERBOSE 1
@@ -711,7 +711,7 @@ dec_level:
 
 %%
 
-void yyerror(char *s) {
+void yyerror(const char *s) {
     err++;
     printf("%s in line %d\n", s, line);
     fprintf(foutput, "%s in line %d\n", s, line);
