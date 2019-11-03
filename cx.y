@@ -22,7 +22,8 @@
 
     enum vartype {
         inttype,
-        booltype
+        booltype,
+        chartype
     };
 
     /* 符号表结构 */
@@ -63,7 +64,7 @@
     int err; // 程序中的错误个数
     extern int line;
 
-    char varType[10]; //判断当前id是整形还是布尔类型
+    char varType[10]; //判断当前id是整形还是布尔类型还是字符类型
 
     void init();
     void enter(enum vartype t, enum object k);
@@ -89,17 +90,19 @@
 
 %token PLUS MINUS TIMES SLASH LES LEQ GTR GEQ EQL NEQ BECOMES OR AND NOT
 %token SEMICOLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
-%token IF ELSE WHILE WRITE READ INT BOOL CONST
+%token IF ELSE WHILE WRITE READ INT BOOL CONST CHAR
 %token SELFADD SELFMIUNS REPEAT UNTIL XOR MOD ODD TRUE FALSE
 %token CALL DO FUNC EXIT FOR
 %token <ident> IDENT
 %token <number> NUMBER
+%token <ident> CHARACTER
 
 %type <number> ident
 %type <number> vardecls vardecl varlist vardef
 %type <number> get_table_addr get_code_addr
 %type <number> elsestm
 %type <number> for2
+%type <number> term factor expression idornum
 
 %nonassoc IFX
 %nonassoc ELSE
@@ -218,6 +221,10 @@ type:
     {
         strcpy(varType, "bool");
     }
+    | CHAR
+    {
+        strcpy(varType, "char");
+    }
     ;
 
 /* 变量声明列表 */
@@ -242,6 +249,8 @@ vardef:
             enter(inttype, variable); 
         else if(!strcmp(varType, "bool"))
             enter(booltype, variable);
+        else if(!strcmp(varType, "char"))
+            enter(chartype, variable);
         $$ = 1;
     }
     ;
@@ -330,6 +339,15 @@ assignmentstm:
         else
             yyerror("Symbol should be a variable and type should be bool");
     }
+    | ident BECOMES character SEMICOLON
+    {
+        if ($1 == 0)
+            yyerror("Symbol does not exist");
+        else if (table[$1].kind == variable && table[$1].type == chartype) 
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        else
+            yyerror("Symbol should be a variable and type should be char");
+    } 
     ;
 
 /* 读语句 */
@@ -351,8 +369,12 @@ readvar:
             gen(opr, 0, 16);
             gen(sto, lev - table[$1].level, table[$1].adr);
         }
+        else if (table[$1].kind == variable && table[$1].type == chartype) {
+            gen(opr, 0, 17);
+            gen(sto, lev - table[$1].level, table[$1].adr);
+        }
         else {
-            yyerror("Can only read int variable");
+            yyerror("Can only read int or char variable");
         }
     }
     ;
@@ -366,13 +388,25 @@ writestm:
 writeexplist:
     expression
     {
-        gen(opr, 0, 14);
-        gen(opr, 0, 15);
+        if ($1 == 1) {  //字符
+            gen(opr, 0, 23);
+            gen(opr, 0, 15);
+        }
+        else {  // 整数
+            gen(opr, 0, 14);
+            gen(opr, 0, 15);
+        }
     }
     | writeexplist COMMA expression
     {
-        gen(opr, 0, 14);
-        gen(opr, 0, 15);
+        if ($3 == 1) {  //　字符
+            gen(opr, 0, 23);
+            gen(opr, 0, 15);
+        }
+        else {  // 整数
+            gen(opr, 0, 14);
+            gen(opr, 0, 15);
+        }
     }
     ;
 
@@ -389,11 +423,9 @@ selfaddminus:
     { 
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else if (table[$1].kind == procedure)
-            yyerror("Procedure cannot selfadd");
-        else if (table[$1].kind == constant)
-            yyerror("Constant cannot selfadd");
-        else if (table[$1].kind == variable) {
+        else if (table[$1].kind == variable && table[$1].type != inttype) 
+            yyerror("Only int variable can selfadd");
+        else if (table[$1].kind == variable && table[$1].type == inttype) {
             gen(lod, lev - table[$1].level, table[$1].adr);
             gen(lit, 0, 1);
             gen(opr, 0, 2);
@@ -404,11 +436,9 @@ selfaddminus:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
-        else if (table[$1].kind == procedure)
-            yyerror("Procedure cannot selfminus");
-        else if (table[$1].kind == constant)
-            yyerror("Constant cannot selfminus");
-        else if (table[$1].kind == variable) {
+        else if (table[$1].kind == variable && table[$1].type != inttype) 
+            yyerror("Only int variable can selfminus");
+        else if (table[$1].kind == variable && table[$1].type == inttype) {
             gen(lod, lev - table[$1].level, table[$1].adr);
             gen(lit, 0, 1);
             gen(opr, 0, 3);
@@ -608,13 +638,26 @@ idornum:
             yyerror("Symbol does not exist");
         else if (table[$1].kind == procedure)
             yyerror("Symbol should not be a procedure");
-        else if (table[$1].kind == constant)
+        else if (table[$1].kind == constant) {
+            $$ = 0;
             gen(lit, 0, table[$1].val);
-        else if (table[$1].kind == variable)
+        }
+        else if (table[$1].kind == variable && table[$1].type == inttype) {
+            $$ = 0; 
             gen(lod, lev - table[$1].level, table[$1].adr);
+        }
+        else if (table[$1].kind == variable && table[$1].type == booltype) {
+            $$ = 0; 
+            gen(lod, lev - table[$1].level, table[$1].adr);
+        }
+        else if (table[$1].kind == variable && table[$1].type == chartype) {
+            $$ = 1;
+            gen(lod, lev - table[$1].level, table[$1].adr);
+        }
     }   
     | NUMBER 
     {
+        $$ = 0;
         gen(lit, 0, $1);
     }
     ;
@@ -631,20 +674,36 @@ trueorfalse:
     }
     ;
 
+character:
+    CHARACTER
+    {
+        gen(lit, 0, $1[1]);
+    }
+    ;
+
 /* 算术表达式 */
 expression: 
-    PLUS term
+    PLUS term 
+    {
+        $$ = 0;
+    }
     | MINUS term
     {
+        $$ = 0;
         gen(opr, 0, 1);
     }
-    | term             
+    | term    
+    {
+        $$ = $1;
+    }         
     | expression PLUS term
     {
+        $$ = 0;
         gen(opr, 0, 2);
     }
     | expression MINUS term
     {
+        $$ = 0;
         gen(opr, 0, 3);
     }
     ;
@@ -652,20 +711,27 @@ expression:
 /* 项 */
 term: 
     factor
+    {
+        $$ = $1;
+    }
     | term TIMES factor
     {
+        $$ = 0;
         gen(opr, 0, 4);
     }
     | term SLASH factor
     {
+        $$ = 0;
         gen(opr, 0, 5);
     }  
     | term MOD factor
     {
+        $$ = 0;
         gen(opr, 0, 18);
     }
     | term XOR factor
     {
+        $$ = 0;
         gen(opr, 0, 19);
     }
     ;
@@ -673,7 +739,13 @@ term:
 /* 因子 */
 factor: 
     idornum
-    | LPAREN expression RPAREN
+    {
+        $$ = $1;
+    }
+    | LPAREN expression RPAREN 
+    {
+        $$ = 0;
+    }
     ;
 
 ident: 
@@ -929,8 +1001,22 @@ void interpret() {
                 printf("input a number: ");
                 fprintf(fresult, "input a number: ");
                 scanf("%d", &(s[t]));
+                getchar();
                 fprintf(fresult, "%d\n", s[t]);           
                 break;
+            case 17:/* 读入一个字符置于栈顶 */
+                {
+                    char ch;
+                    t = t + 1;
+                    printf("input a character: ");
+                    fprintf(fresult, "input a character: ");
+                    scanf("%c", &ch);
+                    getchar();
+                    s[t] = ch;
+                    fprintf(fresult, "%c\n", s[t]);           
+                    break;
+                }
+                
             case 18:/* 次栈顶项求余栈顶项 */ 
                 t = t - 1;
                 s[t] = s[t] % s[t + 1];
@@ -949,6 +1035,11 @@ void interpret() {
             case 22:/* 次栈顶项or栈顶项 */
                 t = t - 1;
                 s[t] = s[t] || s[t + 1];
+                break;
+            case 23:/* 栈顶字符输出 */
+                printf("%c", s[t]);
+                fprintf(fresult, "%c", s[t]);
+                t = t - 1;
                 break;
             }
             printstack(t, p, s);

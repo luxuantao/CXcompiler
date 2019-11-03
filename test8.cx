@@ -11,6 +11,11 @@
     } until (x == 1);
     write(x);
 
+    while (x < 3) {
+        x++;
+    }
+    write(x);
+
     for (x = 0; x < 2; x++) {
         int y;
         y = 0;

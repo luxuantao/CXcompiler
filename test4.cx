@@ -12,13 +12,14 @@
     else {
         write(999);
     }
+    write(x);
 
-    /*if (x < 2) 
+    if (x < 2) 
         if (x < 1)
             x++;
         else
             x--;
     else
-        write(999);*/
+        write(999);
     write(x);
 }

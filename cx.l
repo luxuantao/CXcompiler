@@ -12,6 +12,7 @@
 whitespace  ([ \t\n])+
 ID          [A-Za-z][A-Za-z0-9]*
 NUM         ([1-9][0-9]*)|0
+CHA         '[A-za-z]'
 
 %%
 
@@ -64,22 +65,30 @@ NUM         ([1-9][0-9]*)|0
 "func"     {return FUNC;}
 "exit"     {return EXIT;}
 "for"      {return FOR;}
+"char"     {return CHAR;}
 
-{ID}    {
-			yylval.ident = (char *)malloc(strlen(yytext) + 1);
-			strcpy(yylval.ident, yytext);
-			return IDENT;
-		}
+{ID}  	 	{
+				yylval.ident = (char *)malloc(strlen(yytext) + 1);
+				strcpy(yylval.ident, yytext);
+				return IDENT;
+			}
 
-{NUM}   {
-			yylval.number = atoi(yytext);
-			return NUMBER;
-		}
+{NUM}   	{
+				yylval.number = atoi(yytext);
+				return NUMBER;
+			}
 
-.       {
-			sprintf(msg, "yyerror: unexpected character %s", yytext);
-			yyerror(msg);
-		}
+{CHA} 		{
+				yylval.ident = (char *)malloc(strlen(yytext) + 1);
+				strcpy(yylval.ident, yytext);
+				return CHARACTER;
+			}
+
+
+.       	{
+				sprintf(msg, "yyerror: unexpected character %s", yytext);
+				yyerror(msg);
+			}
 
 %%
 

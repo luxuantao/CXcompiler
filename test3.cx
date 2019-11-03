@@ -1,14 +1,9 @@
 {
     int x, y, z;
-    bool w;
-    int x1;
     x = 5;
-    x1 = 2;
-    w = false;
     x++;
     y = 3;
     write(x % y);
     exit;
     write(x ^ y);
-    write(w);
 }
