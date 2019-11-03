@@ -423,6 +423,8 @@ selfaddminus:
     { 
         if ($1 == 0)
             yyerror("Symbol does not exist");
+        else if (table[$1].kind == constant) 
+            yyerror("Constant cannot selfadd");
         else if (table[$1].kind == variable && table[$1].type != inttype) 
             yyerror("Only int variable can selfadd");
         else if (table[$1].kind == variable && table[$1].type == inttype) {
@@ -436,6 +438,8 @@ selfaddminus:
     {
         if ($1 == 0)
             yyerror("Symbol does not exist");
+        else if (table[$1].kind == constant) 
+            yyerror("Constant cannot selfminus");
         else if (table[$1].kind == variable && table[$1].type != inttype) 
             yyerror("Only int variable can selfminus");
         else if (table[$1].kind == variable && table[$1].type == inttype) {
